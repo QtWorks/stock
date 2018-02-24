@@ -292,32 +292,7 @@ MainWindow::appStarted()
 				QApplication::quit();
 			}
 
-			try {
-				d->m_db = new Db( this );
-
-				d->m_codeModel = new ByProductModel( this, d->m_db,
-					d->m_sigs, this );
-				d->m_placeModel = new ByPlaceModel( this, d->m_db,
-					d->m_sigs, this );
-
-				d->m_codeFilterModel = new ByProductSortModel( this );
-				d->m_codeFilterModel->setSourceModel( d->m_codeModel );
-
-				d->m_placeFilterModel = new ByPlaceSortModel( this );
-				d->m_placeFilterModel->setSourceModel( d->m_placeModel );
-
-				d->m_view->setFilterModels( d->m_codeFilterModel, d->m_placeFilterModel );
-				d->m_view->setModels( d->m_codeModel, d->m_placeModel );
-
-				d->m_view->setDb( d->m_sigs, d->m_db );
-			}
-			catch( const Exception & x )
-			{
-				QMessageBox::critical( this, tr( "Couldn't open database..." ),
-					tr( "Couldn't open database.\n\n%1" ).arg( x.msg() ) );
-
-				QApplication::quit();
-			}
+			createDb();
 
 			startNetwork();
 		}
@@ -335,7 +310,43 @@ MainWindow::appStarted()
 
 		options();
 
+		if( d->m_cfg.host().isEmpty() )
+			QApplication::quit();
+
+		createDb();
+
 		startNetwork();
+	}
+}
+
+void
+MainWindow::createDb()
+{
+	try {
+		d->m_db = new Db( this );
+
+		d->m_codeModel = new ByProductModel( this, d->m_db,
+			d->m_sigs, this );
+		d->m_placeModel = new ByPlaceModel( this, d->m_db,
+			d->m_sigs, this );
+
+		d->m_codeFilterModel = new ByProductSortModel( this );
+		d->m_codeFilterModel->setSourceModel( d->m_codeModel );
+
+		d->m_placeFilterModel = new ByPlaceSortModel( this );
+		d->m_placeFilterModel->setSourceModel( d->m_placeModel );
+
+		d->m_view->setFilterModels( d->m_codeFilterModel, d->m_placeFilterModel );
+		d->m_view->setModels( d->m_codeModel, d->m_placeModel );
+
+		d->m_view->setDb( d->m_sigs, d->m_db );
+	}
+	catch( const Exception & x )
+	{
+		QMessageBox::critical( this, tr( "Couldn't open database..." ),
+			tr( "Couldn't open database.\n\n%1" ).arg( x.msg() ) );
+
+		QApplication::quit();
 	}
 }
 
@@ -346,6 +357,15 @@ MainWindow::startNetwork()
 
 	if( host.setAddress( d->m_cfg.host() ) )
 	{
+		d->m_srv = new Server( this );
+		d->m_srv->setSecret( d->m_cfg.secret() );
+
+		if( !d->m_srv->listen( host, d->m_cfg.port() ) )
+			cantStartNetwork( d->m_srv->errorString() );
+
+		d->m_srv->setDbAndModels( d->m_db, d->m_sigs,
+			d->m_codeModel, d->m_placeModel );
+
 		d->m_udp = new QUdpSocket( this );
 
 		if( !d->m_udp->bind( host, d->m_cfg.port() ) )
@@ -353,11 +373,6 @@ MainWindow::startNetwork()
 
 		connect( d->m_udp, &QUdpSocket::readyRead,
 			this, &MainWindow::readPendingDatagrams );
-
-		d->m_srv = new Server( this );
-
-		if( !d->m_srv->listen( host, d->m_cfg.port() ) )
-			cantStartNetwork( d->m_srv->errorString() );
 	}
 	else
 	{
@@ -398,20 +413,38 @@ MainWindow::readPendingDatagrams()
 		QNetworkDatagram datagram = d->m_udp->receiveDatagram();
 
 		if( datagramType( datagram ) == DatagramType::TellIP )
-			writeMyIpDatargam( d->m_udp, d->m_cfg.host(), d->m_cfg.port(),
-				datagram.senderAddress(), datagram.senderPort() );
+		{
+			Messages::TellMeYourIP msg;
+
+			try {
+				readDatagram< Messages::TellMeYourIP,
+					Messages::tag_TellMeYourIP< cfgfile::qstring_trait_t > > (
+						datagram, msg );
+
+				if( msg.secret() == d->m_cfg.secret() )
+					writeMyIpDatargam( d->m_udp, d->m_cfg.host(), d->m_cfg.port(),
+						datagram.senderAddress(), datagram.senderPort() );
+			}
+			catch( const Exception & )
+			{
+			}
+		}
 	}
 }
 
 void
 MainWindow::options()
 {
-	Options opt( d->m_cfg.host(), d->m_cfg.port(), this );
+	Options opt( d->m_cfg.host(), d->m_cfg.port(), d->m_cfg.secret(), this );
 
 	if( opt.exec() == QDialog::Accepted )
 	{
 		d->m_cfg.set_host( opt.host() );
 		d->m_cfg.set_port( opt.port() );
+		d->m_cfg.set_secret( opt.password() );
+
+		if( d->m_srv )
+			d->m_srv->setSecret( opt.password() );
 
 		QFile file( c_appCfgFileName );
 

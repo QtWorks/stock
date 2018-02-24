@@ -10,6 +10,12 @@
 			#|
 			{class TellMeYourIP
 				{base tagNoValue}
+
+				{tagScalar
+					{valueType QString}
+					{name secret}
+					{required}
+				}
 			} || class TellMeYourIP
 
 
@@ -34,10 +40,50 @@
 
 
 			|#
+				Error.
+			#|
+			{class Error
+				{base tagNoValue}
+			} || class Error
+
+
+			|#
+				Ok.
+			#|
+			{class Ok
+				{base tagNoValue}
+			} || class Ok
+
+
+			|#
+				Hello from server.
+			#|
+			{class Hello
+				{base tagNoValue}
+
+				{tagScalarVector
+					{valueType QString}
+					{name places}
+				}
+
+				{tagScalarVector
+					{valueType QString}
+					{name products}
+				}
+			} || class Hello
+
+
+			|#
 				Add product.
 			#|
 			{class AddProduct
 				{base tagNoValue}
+
+				{tagScalar
+					{valueType QString}
+					{name secret}
+					{required}
+				}
 
 				{tagScalar
 					{valueType QString}
@@ -67,8 +113,18 @@
 
 				{tagScalar
 					{valueType QString}
-					{name place}
+					{name secret}
 					{required}
+				}
+
+				{tagScalar
+					{valueType QString}
+					{name place}
+				}
+
+				{tagScalar
+					{valueType QString}
+					{name code}
 				}
 			} || class GiveListOfProducts
 
@@ -86,7 +142,7 @@
 				}
 
 				{tagScalar
-					{valueType "long long"}
+					{valueType "unsigned long long"}
 					{name count}
 					{required}
 				}
@@ -95,6 +151,11 @@
 					{valueType QString}
 					{name desc}
 					{required}
+				}
+
+				{tagScalar
+					{valueType QString}
+					{name place}
 				}
 			} || class Product
 
