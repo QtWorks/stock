@@ -5,7 +5,7 @@ TARGET = Stock
 
 QT += widgets network sql
 
-CONFIG += c++11
+CONFIG += c++14
 
 DEFINES += CFGFILE_QT_SUPPORT
 
@@ -68,7 +68,7 @@ generate_cfg.output = ${QMAKE_FILE_BASE}.hpp
 generate_cfg.CONFIG = no_link
 generate_cfg.variable_out = HEADERS
 
-CFGFILE_GENERATOR = $$shell_path( $$absolute_path( $${OUT_PWD}/../../3rdparty/cfgfile/cfgfile.generator$${EXE_EXT} ) )
+CFGFILE_GENERATOR = $$system_path( $$absolute_path( $${OUT_PWD}/../../3rdparty/cfgfile/cfgfile.generator$${EXE_EXT} ) )
 
 write_file( $${PWD}/cfgfile_generator_path, CFGFILE_GENERATOR)
 
